@@ -137,11 +137,12 @@
     <div class="game-container">
       <div class="instructions">
         <span class="desktop-only"
-          >Use ← → arrow keys to move the basket and catch falling stars!</span
+          >Use ← → arrow keys to move the basket and catch falling stars! Score
+          100+ for SUPERHUMAN status!</span
         >
         <span class="mobile-only"
           >Tap the buttons below or drag to move the basket and catch falling
-          stars!</span
+          stars! Score 100+ for SUPERHUMAN status!</span
         >
       </div>
       <div style="position: relative">
@@ -221,10 +222,10 @@
 
         if (isMobile) {
           instructions.innerHTML =
-            "Tap the buttons below or drag to move the basket and catch falling stars!";
+            "Tap the buttons below or drag to move the basket and catch falling stars! Score 100+ for SUPERHUMAN status!";
         } else {
           instructions.innerHTML =
-            "Use ← → arrow keys to move the basket and catch falling stars!";
+            "Use ← → arrow keys to move the basket and catch falling stars! Score 100+ for SUPERHUMAN status!";
         }
       }
 
@@ -321,22 +322,24 @@
         // Reset game state
         gameState = {
           score: 0,
-          timeLeft: 60,
+          timeLeft: 90, // Extended to 90 seconds for 100+ stars
           isGameRunning: true,
           stars: [],
-          basket: { x: 350, y: 550, width: 100, height: 30, speed: 8 },
-          starSpeed: 2,
+          basket: { x: 350, y: 550, width: 120, height: 35, speed: 12 }, // Slightly larger and faster basket
+          starSpeed: 1.5, // Slower initial speed
           lastSpeedIncrease: 0,
+          spawnRate: 600, // Faster spawn rate (every 600ms)
+          maxStarsOnScreen: 8, // More concurrent stars
         };
 
         // Update UI
         document.getElementById("score").textContent = "0";
-        document.getElementById("time").textContent = "60";
+        document.getElementById("time").textContent = "90";
         document.getElementById("gameOver").style.display = "none";
 
         // Start game loops
         gameLoop = setInterval(updateGame, 1000 / 60); // 60 FPS
-        spawnTimer = setInterval(spawnStar, 800); // Spawn star every 800ms
+        spawnTimer = setInterval(spawnStar, gameState.spawnRate); // Dynamic spawn rate
         countdownTimer = setInterval(updateTimer, 1000); // Update timer every second
       }
 
@@ -390,12 +393,25 @@
       function spawnStar() {
         if (!gameState.isGameRunning) return;
 
+        // Limit max stars on screen for performance and difficulty balance
+        if (gameState.stars.length >= gameState.maxStarsOnScreen) return;
+
         const star = {
           x: Math.random() * (canvas.width - 30) + 15,
           y: -20,
-          size: 15,
-          speed: gameState.starSpeed + (Math.random() * 2 - 1), // Add some variation
+          size: 12 + Math.random() * 6, // Variable star sizes (12-18)
+          speed: gameState.starSpeed + (Math.random() * 1.5 - 0.75), // More speed variation
+          points: 1, // Base points
+          type: Math.random() < 0.95 ? "normal" : "bonus", // 5% chance for bonus stars
         };
+
+        // Bonus stars are worth more but faster
+        if (star.type === "bonus") {
+          star.points = 3;
+          star.speed *= 1.5;
+          star.size *= 1.3;
+        }
+
         gameState.stars.push(star);
       }
 
@@ -417,7 +433,7 @@
         for (let i = gameState.stars.length - 1; i >= 0; i--) {
           const star = gameState.stars[i];
 
-          // Simple rectangular collision detection
+          // Enhanced collision detection with star size consideration
           if (
             star.x + star.size > gameState.basket.x &&
             star.x - star.size < gameState.basket.x + gameState.basket.width &&
@@ -426,24 +442,56 @@
           ) {
             // Star caught!
             gameState.stars.splice(i, 1);
-            gameState.score++;
+            gameState.score += star.points; // Use star's point value
             document.getElementById("score").textContent = gameState.score;
 
-            // Visual feedback - brief flash
-            createCatchEffect(star.x, star.y);
+            // Visual feedback - enhanced for bonus stars
+            createCatchEffect(star.x, star.y, star.type === "bonus");
+
+            // Play catch sound effect (visual feedback)
+            if (star.type === "bonus") {
+              showBonusText(star.x, star.y);
+            }
           }
         }
       }
 
       // Create visual effect when star is caught
-      function createCatchEffect(x, y) {
+      function createCatchEffect(x, y, isBonus = false) {
         ctx.save();
         ctx.globalAlpha = 0.8;
-        ctx.fillStyle = "#FFD700";
-        ctx.beginPath();
-        ctx.arc(x, y, 25, 0, Math.PI * 2);
-        ctx.fill();
+
+        if (isBonus) {
+          // Special effect for bonus stars
+          ctx.fillStyle = "#FF6B35";
+          ctx.beginPath();
+          ctx.arc(x, y, 35, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = "#FFD700";
+          ctx.beginPath();
+          ctx.arc(x, y, 25, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          ctx.fillStyle = "#FFD700";
+          ctx.beginPath();
+          ctx.arc(x, y, 25, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
         ctx.restore();
+      }
+
+      // Show bonus points text
+      function showBonusText(x, y) {
+        setTimeout(() => {
+          ctx.save();
+          ctx.fillStyle = "#FF6B35";
+          ctx.font = "bold 20px Arial";
+          ctx.textAlign = "center";
+          ctx.fillText("+3!", x, y - 30);
+          ctx.restore();
+        }, 50);
       }
 
       // Draw the player's basket
@@ -472,20 +520,32 @@
       // Draw all stars
       function drawStars() {
         gameState.stars.forEach((star) => {
-          drawStar(star.x, star.y, star.size);
+          drawStar(star.x, star.y, star.size, star.type);
         });
       }
 
       // Draw a five-pointed star
-      function drawStar(x, y, size) {
+      function drawStar(x, y, size, type = "normal") {
         ctx.save();
         ctx.translate(x, y);
 
-        // Star glow effect
-        ctx.shadowColor = "#FFD700";
-        ctx.shadowBlur = 15;
+        // Different colors and effects for different star types
+        if (type === "bonus") {
+          // Bonus star with pulsing effect
+          ctx.shadowColor = "#FF6B35";
+          ctx.shadowBlur = 20;
+          ctx.fillStyle = "#FF6B35";
 
-        ctx.fillStyle = "#FFD700";
+          // Add pulsing animation
+          const pulse = Math.sin(Date.now() * 0.01) * 0.2 + 1;
+          ctx.scale(pulse, pulse);
+        } else {
+          // Normal star
+          ctx.shadowColor = "#FFD700";
+          ctx.shadowBlur = 15;
+          ctx.fillStyle = "#FFD700";
+        }
+
         ctx.beginPath();
 
         // Create five-pointed star path
@@ -516,30 +576,79 @@
         ctx.restore();
       }
 
-      // Increase difficulty every 15 seconds
+      // Increase difficulty dynamically throughout the game
       function increaseDifficulty() {
-        const elapsedTime = 60 - gameState.timeLeft;
+        const elapsedTime = 90 - gameState.timeLeft;
+
+        // Multiple difficulty phases for extreme challenge
         if (
           elapsedTime > 0 &&
-          elapsedTime % 15 === 0 &&
+          elapsedTime % 10 === 0 &&
           elapsedTime !== gameState.lastSpeedIncrease
         ) {
-          gameState.starSpeed += 0.5;
+          // Increase star speed every 10 seconds
+          gameState.starSpeed += 0.8;
           gameState.lastSpeedIncrease = elapsedTime;
 
+          // Also increase spawn rate progressively
+          if (elapsedTime >= 30) {
+            clearInterval(spawnTimer);
+            gameState.spawnRate = Math.max(300, gameState.spawnRate - 50); // Minimum 300ms
+            spawnTimer = setInterval(spawnStar, gameState.spawnRate);
+          }
+
+          // Increase max stars on screen for final 30 seconds
+          if (elapsedTime >= 60) {
+            gameState.maxStarsOnScreen = 12; // Insane final phase
+          }
+
           // Visual feedback for speed increase
-          showSpeedUpMessage();
+          showSpeedUpMessage(elapsedTime);
         }
       }
 
-      // Show speed increase notification
-      function showSpeedUpMessage() {
-        ctx.save();
-        ctx.fillStyle = "rgba(255, 0, 0, 0.8)";
-        ctx.font = "24px Arial";
-        ctx.textAlign = "center";
-        ctx.fillText("SPEED UP!", canvas.width / 2, canvas.height / 2);
-        ctx.restore();
+      // Enhanced speed increase notification
+      function showSpeedUpMessage(elapsedTime) {
+        const phase = Math.floor(elapsedTime / 10);
+        const messages = [
+          "SPEED UP!",
+          "FASTER!",
+          "INTENSE!",
+          "EXTREME!",
+          "INSANE!",
+          "SUPERHUMAN!",
+          "LEGENDARY!",
+          "IMPOSSIBLE!",
+          "GODLIKE!",
+        ];
+
+        const message =
+          messages[Math.min(phase - 1, messages.length - 1)] || "SPEED UP!";
+        const colors = [
+          "#FF0000",
+          "#FF6B35",
+          "#FFD700",
+          "#FF1493",
+          "#00FFFF",
+          "#FF69B4",
+          "#00FF00",
+          "#8A2BE2",
+          "#FF4500",
+        ];
+        const color =
+          colors[Math.min(phase - 1, colors.length - 1)] || "#FF0000";
+
+        setTimeout(() => {
+          ctx.save();
+          ctx.fillStyle = color;
+          ctx.font = "bold 28px Arial";
+          ctx.textAlign = "center";
+          ctx.strokeStyle = "#000";
+          ctx.lineWidth = 2;
+          ctx.strokeText(message, canvas.width / 2, canvas.height / 2);
+          ctx.fillText(message, canvas.width / 2, canvas.height / 2);
+          ctx.restore();
+        }, 100);
       }
 
       // Update game timer
@@ -575,8 +684,27 @@
           document.getElementById("newHighScore").style.display = "none";
         }
 
-        // Show game over screen
-        document.getElementById("finalScore").textContent = gameState.score;
+        // Show game over screen with achievement system
+        let achievement = "";
+        if (gameState.score >= 170) {
+          achievement = "🏆 SUPERHUMAN REFLEXES! 🏆";
+        } else if (gameState.score >= 100) {
+          achievement = "⭐ LEGENDARY PLAYER! ⭐";
+        } else if (gameState.score >= 60) {
+          achievement = "🔥 EXPERT LEVEL! 🔥";
+        } else if (gameState.score >= 40) {
+          achievement = "💪 SKILLED PLAYER! 💪";
+        } else if (gameState.score >= 20) {
+          achievement = "👍 Good Job! 👍";
+        }
+
+        document.getElementById("finalScore").innerHTML =
+          gameState.score +
+          (achievement
+            ? '<br><span style="color: #4CAF50; font-size: 18px;">' +
+              achievement +
+              "</span>"
+            : "");
         document.getElementById("gameOver").style.display = "block";
       }
 
