@@ -138,11 +138,11 @@
       <div class="instructions">
         <span class="desktop-only"
           >Use ← → arrow keys to move the basket and catch falling stars! Score
-          170+ for SUPERHUMAN status!</span
+          200+ for SUPERHUMAN status!</span
         >
         <span class="mobile-only"
           >Tap the buttons below or drag to move the basket and catch falling
-          stars! Score 170+ for SUPERHUMAN status!</span
+          stars! Score 200+ for SUPERHUMAN status!</span
         >
       </div>
       <div style="position: relative">
@@ -222,10 +222,10 @@
 
         if (isMobile) {
           instructions.innerHTML =
-            "Tap the buttons below or drag to move the basket and catch falling stars! Score 170+ for SUPERHUMAN status!";
+            "Tap the buttons below or drag to move the basket and catch falling stars! Score 200+ for SUPERHUMAN status!";
         } else {
           instructions.innerHTML =
-            "Use ← → arrow keys to move the basket and catch falling stars! Score 170+ for SUPERHUMAN status!";
+            "Use ← → arrow keys to move the basket and catch falling stars! Score 200+ for SUPERHUMAN status!";
         }
       }
 
@@ -686,7 +686,7 @@
 
         // Show game over screen with achievement system
         let achievement = "";
-        if (gameState.score >= 170) {
+        if (gameState.score >= 200) {
           achievement = "🏆 SUPERHUMAN REFLEXES! 🏆";
         } else if (gameState.score >= 100) {
           achievement = "⭐ LEGENDARY PLAYER! ⭐";
